@@ -2,8 +2,8 @@
 // Name        : SR_project.cpp
 // Author      : Giuseppe Giliberto, Giuseppe Puglisi, Giuseppe Sgroi
 // Version     : 2.0
-// Copyright   : Università degli Studi di Catania
-// Description : Kinematics Forward and Inverse
+// Copyright   : Universita' degli Studi di Catania
+// Description : Generalized Kinematics Forward and Inverse
 //============================================================================
 
 #define _USE_MATH_DEFINES
@@ -16,30 +16,22 @@ using namespace std;
 class Kinematics {
 	//parte public accessibile a tutti
 	public:
-    	//costruttore
+		//costruttore
 		Kinematics();
 		
 		//calcola cinematica diretta
 		void calcForwardKinematics(int iter, double *returnBracci, double *inputThetaRadiant, double *returnResult);
 
 		//calcola cinematica inversa
-		//void calcInverseKinematics(int direction);
+		void calcInverseKinematics(int direction, int iter, double *returnBracci, double *inputThetaRadiant, double *returnResult);
 
-		//ritorna theta2
-		//void calcTheta2();
+		void calcTheta_0(double *returnResult); //calcolo il theta0
 
-		//calcola il theta3
-		//void calcTheta3(int direction);
+		void calcTheta_1(double *returnBracci, double *returnResult); //calcolo il theta1
 
-		//calcola il theta4
-		//void calcTheta4();	
+		void calcTheta_i(int i, int direction, double *returnBracci, double *returnResult); //calcolo il theta i-esimo
 
-		//double theta1, theta2, theta3, theta4; //angoli
-		//double L1, L2; //bracci
-	 
-        //double calc_alpha;
-		//double calc_x_t, calc_y_t, calc_z_t; //coordinate calcolate
-		//double calc_theta1, calc_theta2, calc_theta3, calc_theta4; //angoli calcolati
+		void calcTheta_last(int iter, double *returnResult); //calcolo l'ultimo theta
 };
 
 //definizione del costruttore
@@ -47,95 +39,101 @@ Kinematics::Kinematics() {}
 
 //definizione funzione per calcolare la cinematica diretta
 void Kinematics::calcForwardKinematics(int iter, double *returnBracci, double *inputThetaRadiant, double *returnResult) {
-     double calc_x_t, calc_y_t, calc_z_t, calc_alpha;
+	double calc_x_t, calc_y_t, calc_z_t, calc_alpha;
+
+	for(int i = 0; i < iter; i++) {
+		double calcTmpTheta = 0;
+             
+		for(int j = 0; j <= i; j++)
+			calcTmpTheta += inputThetaRadiant[j];
+             
+		calc_x_t += returnBracci[i] * cos(calcTmpTheta);
+		calc_y_t += returnBracci[i] * sin(calcTmpTheta);
+		//calc_z_t += 0; // ??
+             
+		calc_alpha = calcTmpTheta+inputThetaRadiant[iter]; //all'ultima iterazione avrï¿½ calcolato l'alfa che mi interessa
+	}
      
-     for(int i = 0; i < iter; i++) {
-             double calcTmpTheta = 0;
-             
-             for(int j = 0; j <= i; j++) {
-                     cout << "iter : " << i << " - j : " << j << endl;
-                     calcTmpTheta += inputThetaRadiant[j];
-             }
-             
-             calc_x_t += returnBracci[i] * cos(calcTmpTheta);
-             calc_y_t += returnBracci[i] * sin(calcTmpTheta);
-             //calc_z_t += 0; // ??
-             
-             calc_alpha = calcTmpTheta+inputThetaRadiant[iter]; //all'ultima iterazione avrò calcolato l'alfa che mi interessa
-     }
-     
-     returnResult[0] = calc_x_t;
-     returnResult[1] = calc_y_t;
-     returnResult[2] = 0; //calc_z_t;
-     returnResult[3] = calc_alpha;
+	returnResult[0] = calc_x_t;
+	returnResult[1] = calc_y_t;
+	returnResult[2] = 0; //calc_z_t;
+	returnResult[3] = calc_alpha;
 }
 
-/*//definizione funzione per calcolare la cinematica inversa
-void Kinematics::calcInverseKinematics(int direction){
-     calc_theta1 = 0;
+//definizione funzione per calcolare la cinematica inversa
+void Kinematics::calcInverseKinematics(int direction, int iter, double *returnBracci, double *inputThetaRadiant, double *returnResult) {
+	calcTheta_0(returnResult);
 
-	 calcTheta3(direction);
+	for(int i = 2; i <= iter-1; i++)
+		calcTheta_i(i, direction, returnBracci, returnResult);
+
+	calcTheta_1(returnBracci, returnResult);
+
+	calcTheta_last(iter, returnResult);
+}
+
+void Kinematics::calcTheta_0(double *returnResult) {
+	returnResult[4] = 0;
+}
+
+void Kinematics::calcTheta_1(double *returnBracci, double *returnResult) {
+	returnResult[4+1] = (atan2(returnResult[1], returnResult[0]) - atan2((returnBracci[2] * sin(returnResult[4+2])), (returnBracci[1] + returnBracci[2] * cos(returnResult[4+2]))));
+}
+
+void Kinematics::calcTheta_i(int i, int direction, double *returnBracci, double *returnResult) {
+	double x_2 = pow(returnResult[0], 2.0); //pow(calc_x_t, 2.0);
+	double y_2 = pow(returnResult[1], 2.0);//pow(calc_y_t, 2.0);
+	double l1_2 = pow(returnBracci[i-1], 2.0);
+	double l2_2 = pow(returnBracci[i], 2.0);
+
+	cout << "braccio (L" << i-1 << ") : " << returnBracci[i-1] << endl;
+	cout << "braccio (L" << i << ") : " << returnBracci[i] << endl;
+
+	double tmp2 = (x_2 + y_2 - l1_2 - l2_2)/(2 * returnBracci[i-1] * returnBracci[i]);
+	double tmp1 = sqrt(1 - pow(tmp2, 2.0)) * direction;
 	
-	 calcTheta2();
-	
-	 calcTheta4();
+	cout << "theta_i : " << i << endl;
+	cout << "tmp2 : " << tmp2 << endl;
+	cout << "tmp1 : " << tmp1 << endl;
+
+	returnResult[4+i] = atan2(tmp1, tmp2); //salvo dalle 5a cella in poi... theta2 verrÃ  salvato in 4+2 = 6 cella
 }
 
-//calcola theta2
-void Kinematics::calcTheta2(){
-     calc_theta2 = (atan2(calc_y_t, calc_x_t) - atan2((L2 * sin(calc_theta3)), (L1 + L2 * cos(calc_theta3))));
+void Kinematics::calcTheta_last(int iter, double *returnResult) {
+	returnResult[4+iter] = (returnResult[3] - returnResult[4+iter-2] - returnResult[4+iter-1]);
 }
-
-//calcola theta3
-void Kinematics::calcTheta3(int direction) {
-     double x_2 = pow(calc_x_t, 2.0);
-	 double y_2 = pow(calc_y_t, 2.0);
-	 double l1_2 = pow(L1, 2.0);
-	 double l2_2 = pow(L2, 2.0);
-
-     double tmp2 = (x_2 + y_2 - l1_2 - l2_2)/(2 * L1 * L2);
-	 double tmp1 = sqrt(1 - pow(tmp2, 2.0)) * direction;
-	
-	 calc_theta3 = (atan2(tmp1, tmp2));
-}
-
-//calcola theta4
-void Kinematics::calcTheta4() {
-     calc_theta4 = (calc_alpha - calc_theta2 - calc_theta3);
-}*/
 
 //============================================================================
 
 //gli angoli per essere calcolati devono essere in radianti
 double DegreeToRadiant(double degree) {
-       return degree * (M_PI / 180.0);
+	return degree * (M_PI / 180.0);
 }
 
 double RadiantToDegree(double radiant) {
-       return radiant * (180.0 / M_PI);
+	return radiant * (180.0 / M_PI);
 }
 
 //============================================================================
 
-int main(int argc, char *argv[]) {
-    int num;
+int main() {
+	int num;
     cout << "Quanti bracci ci sono ? ";
     cin >> num;
      
-    double inputBracci[num];
+    double inputBracci[num], inputTheta[num+1], inputThetaRadiant[num+1];
 
-    for(int i=0; i < num; i++) {
-            cout << "Inserisci la lunghezza del braccio " << i << " : ";
-            cin >> inputBracci[i];
+    for(int i = 0; i < num; i++) {
+		cout << "Inserisci la lunghezza del braccio " << i << " : ";
+		cin >> inputBracci[i];
     }
     
-    double inputTheta[num+1], inputThetaRadiant[num+1];
     for(int i = 0; i < num+1; i++) {
-            double input;
-            cout << "Inserisci l'angolo theta " << i << " (in gradi) : ";
-            cin >> input;
-            inputTheta[i] = input;
-            inputThetaRadiant[i] = DegreeToRadiant(input);
+		double input;
+		cout << "Inserisci l'angolo theta " << i << " (in gradi) : ";
+		cin >> input;
+		inputTheta[i] = input;
+		inputThetaRadiant[i] = DegreeToRadiant(input);
     }
     
     int direction = 1;
@@ -144,12 +142,12 @@ int main(int argc, char *argv[]) {
     
     cout << " ============================================================================ " << endl;
     cout << "Parametri utente:" << endl;
-    for(int i=0; i < num; i++) {
-            cout << "L" << i << " : " << inputBracci[i] << endl;
+    for(int i = 0; i < num; i++) {
+    	cout << "L" << i << " : " << inputBracci[i] << endl;
     }
     
-    for(int i=0; i < num+1; i++) {
-            cout << "theta " << i << " : " << inputTheta[i] << " Gradi --> " << inputThetaRadiant[i] << " Radianti" << endl;
+    for(int i = 0; i < num+1; i++) {
+    	cout << "theta " << i << " : " << inputTheta[i] << " Gradi --> " << inputThetaRadiant[i] << " Radianti" << endl;
     }
 	
 	cout << "Direzione: " << direction << endl;
@@ -176,17 +174,18 @@ int main(int argc, char *argv[]) {
     
 	cout << " ============================================================================ " << endl;
 
-    /*//============================================================================
-	k.calcInverseKinematics(direction);
+    //============================================================================
+	k.calcInverseKinematics(direction, num, inputBracci, inputThetaRadiant, result);
 	cout << "Calcolo la Cinematica Inversa" << endl;
-	cout << "theta1: " << RadiantToDegree(k.calc_theta1) << " Gradi" << endl;
-	cout << "theta2: " << RadiantToDegree(k.calc_theta2) << " Gradi" << endl;
-	cout << "theta3: " << RadiantToDegree(k.calc_theta3) << " Gradi" << endl;
-	cout << "theta4: " << RadiantToDegree(k.calc_theta4) << " Gradi" << endl;
+	for(int i = 4; i < num+4+1; i++) {
+		cout << "theta " << i-4 << " : " << RadiantToDegree(result[i]) << " Gradi" << endl;
+	}
+
 	//============================================================================
 	
-    cout << " ============================================================================ " << endl;*/
+    cout << " ============================================================================ " << endl;
     
-    system("PAUSE");
-    return EXIT_SUCCESS;
+    //system("PAUSE");
+    //return EXIT_SUCCESS;
+    return 0;
 }
