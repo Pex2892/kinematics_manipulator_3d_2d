@@ -2,15 +2,15 @@
 #define GeometryArms_H
 
 class GeometryArms {
-     public:
-            struct geometryArms {
-                   double L1;
-                   double L2;
-            };
+	public:
+		struct geometryArms {
+			double L1;
+			double L2;
+		};
 
-            void setGeometryArms(); 
-            
-            geometryArms sGeoA;
+		void setGeometryArms();
+
+		geometryArms sGeoA;
 };
 
 #endif

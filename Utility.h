@@ -3,6 +3,8 @@
 
 void menu(GeometryArms g);
 
+void cls();
+
 double DegreeToRadiant(double degree);
 
 double RadiantToDegree(double radiant);
